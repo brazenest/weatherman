@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "weatherman",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Serve on a Custom Domain: Cloudflare creates the DNS record and certificate.
+  // The radiantx.solutions zone must be in the account you deploy from.
+  "routes": [{ "pattern": "weatherman.apps.radiantx.solutions", "custom_domain": true }],
+  "workers_dev": false,
+
+  // Non-secret settings. Edit and redeploy to change them.
+  "vars": {
+    "ADMIN_USER_IDS": "U0VTT5EHL",
+    "ADMIN_TEAM_IDS": "T02996B3M",
+    "DEFAULT_LATITUDE": "28.480",
+    "DEFAULT_LONGITUDE": "-81.455",
+    "DEFAULT_LOCATION_LABEL": "at Concepta HQ"
+  },
+
+  // Set each with `npx wrangler secret put <NAME>`; for local dev, put them in .dev.vars.
+  "secrets": {
+    "required": ["SLACK_SIGNING_SECRET", "PIRATE_WEATHER_API_KEY", "GOOGLE_GEOCODING_API_KEY"]
+  },
+
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

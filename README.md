@@ -2,7 +2,7 @@
 
 **A weather app for Slack.** Type `/weather` in any channel or DM to get current conditions, an hourly outlook, or a seven-day forecast for anywhere in the world.
 
-v2.0.0 · November 11, 2026
+v2.1.0 · November 11, 2026
 
 ---
 
@@ -78,82 +78,96 @@ Administrators (see `ADMIN_USER_IDS` below) also see a **Debug Info** panel with
 
 ## Running Weatherman
 
-Weatherman is a small Node.js web service. Slack sends each `/weather` command to it over HTTPS, and it replies with the forecast.
+Weatherman runs as a [Cloudflare Worker](https://developers.cloudflare.com/workers/) at **`https://weatherman.apps.radiantx.solutions`**. Slack sends each `/weather` command to `/slack/events`. The Worker checks Slack's signature, acknowledges immediately, then fetches the forecast and posts it back to Slack in the background.
 
 ### Requirements
 
-- **Node.js 22.9 or newer**
+- A **Cloudflare account** that holds the `radiantx.solutions` zone. The Worker's Custom Domain creates the DNS record and TLS certificate for `weatherman.apps.radiantx.solutions` itself. Remove any existing DNS record for that hostname first.
 - A **Slack workspace** where you can install apps
 - A **Pirate Weather API key** (free) from [pirateweather.net](https://pirateweather.net), which provides the forecast data
 - A **Google Maps Platform API key** with the **Geocoding API** enabled, which turns place names into coordinates
-- A **public HTTPS URL** that reaches the server. Slack can't call `localhost`. For local development, use a tunnel such as `ngrok` or `cloudflared`.
+- **Node.js 22.9 or newer** on the machine you deploy from
 
-### 1. Install and configure
+The Workers Free plan is enough.
+
+### 1. Install
 
 ```sh
 git clone git@github.com:brazenest/weatherman.git
 cd weatherman
 npm install
-cp .env.example .env
+npx wrangler login
 ```
-
-Fill in `.env` (see [Configuration](#configuration)). Leave `SLACK_SIGNING_SECRET` empty until step 2 gives it to you.
 
 ### 2. Create the Slack app
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From scratch**. Name it *Weatherman* and pick your workspace.
-2. Under **Basic Information → App Credentials**, copy the **Signing Secret** into `SLACK_SIGNING_SECRET` in `.env`.
+2. Under **Basic Information → App Credentials**, copy the **Signing Secret**. You'll need it in the next step.
 3. Under **Slash Commands → Create New Command**:
    - **Command:** `/weather`
-   - **Request URL:** `https://<your-host>/slack/events`
+   - **Request URL:** `https://weatherman.apps.radiantx.solutions/slack/events`
    - **Short Description:** `Get the weather forecast`
    - **Usage Hint:** `[-hourly | -daily] [place]`
 4. Under **Install App**, install it to your workspace.
 
 The slash command needs no other scopes, event subscriptions or bot token.
 
-### 3. Build and start
+### 3. Set secrets and deploy
+
+Secrets are stored encrypted in Cloudflare, never in the repo. Each command prompts for the value:
 
 ```sh
-npm run build
-npm start
-```
+npx wrangler secret put SLACK_SIGNING_SECRET
+npx wrangler secret put PIRATE_WEATHER_API_KEY
+npx wrangler secret put GOOGLE_GEOCODING_API_KEY
 
-You should see:
-
-```
-Weatherman v2.0.0 listening on port 3000 (POST /slack/events)
+npm run deploy
 ```
 
 Then type `/weather help` in Slack to confirm everything is connected.
 
-In production, run `npm start` under a process manager (systemd, pm2, a container platform, etc.) behind HTTPS. Environment variables can come from `.env` or be set directly. Values already set in the environment take precedence over `.env`.
+To ship a change later, run `npm run deploy` again. Secrets persist between deploys.
 
 ### Configuration
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `SLACK_SIGNING_SECRET` | **yes** | | Verifies that requests really come from Slack. Found under *Basic Information* in your Slack app. |
-| `PIRATE_WEATHER_API_KEY` | **yes** | | Pirate Weather API key. |
-| `GOOGLE_GEOCODING_API_KEY` | **yes** | | Google Maps Platform key with the Geocoding API enabled. |
-| `DEFAULT_LATITUDE` | no | `28.480` | Latitude used when no place is given. |
-| `DEFAULT_LONGITUDE` | no | `-81.455` | Longitude used when no place is given. |
-| `DEFAULT_LOCATION_LABEL` | no | `at Concepta HQ` | Text shown at the top of replies for the default location. |
-| `ADMIN_USER_IDS` | no | *(none)* | Comma-separated Slack user IDs that see debug details on errors. |
-| `ADMIN_TEAM_IDS` | no | *(none)* | Comma-separated Slack workspace (team) IDs. A user sees debug details only if their user **and** workspace IDs are both listed. |
-| `PORT` | no | `3000` | Port the server listens on. |
-| `SLACK_BOT_TOKEN` | no | | Not needed. Replies use the command's response URL. |
+**Secrets** (set with `npx wrangler secret put <NAME>`):
+
+| Name | Description |
+| --- | --- |
+| `SLACK_SIGNING_SECRET` | Verifies that requests really come from Slack. Found under *Basic Information* in your Slack app. |
+| `PIRATE_WEATHER_API_KEY` | Pirate Weather API key. |
+| `GOOGLE_GEOCODING_API_KEY` | Google Maps Platform key with the Geocoding API enabled. |
+
+**Settings** (in the `vars` section of `wrangler.jsonc`; redeploy after changing):
+
+| Name | Current value | Description |
+| --- | --- | --- |
+| `DEFAULT_LATITUDE` | `28.480` | Latitude used when no place is given. |
+| `DEFAULT_LONGITUDE` | `-81.455` | Longitude used when no place is given. |
+| `DEFAULT_LOCATION_LABEL` | `at Concepta HQ` | Text shown at the top of replies for the default location. |
+| `ADMIN_USER_IDS` | `U0VTT5EHL` | Comma-separated Slack user IDs that see debug details on errors. |
+| `ADMIN_TEAM_IDS` | `T02996B3M` | Comma-separated Slack workspace (team) IDs. A user sees debug details only if their user **and** workspace IDs are both listed. |
 
 To find a Slack user ID, open the person's profile → **⋮** → **Copy member ID**. The workspace ID is the `T…` value in your workspace's URL at `app.slack.com/client/T…/`.
 
-The server exits at startup with a message naming any required variable that is missing.
+The domain is set by `routes` in `wrangler.jsonc`.
+
+### Logs
+
+Logs are enabled. View them in the Cloudflare dashboard under **Workers & Pages → weatherman → Logs**, or stream them live with:
+
+```sh
+npx wrangler tail
+```
 
 ### Troubleshooting
 
 | Symptom | Likely cause |
 | --- | --- |
-| Slack says *"dispatch_failed"* or the command times out | Slack can't reach the server. Check the Request URL ends in `/slack/events`, that it's HTTPS, and that the server is running. |
-| Server logs *"signature mismatch"* | `SLACK_SIGNING_SECRET` doesn't match the Slack app's signing secret. |
+| Slack says *"dispatch_failed"* or the command times out | Slack can't reach the Worker. Check the Request URL is exactly `https://weatherman.apps.radiantx.solutions/slack/events` and that the deploy succeeded. |
+| Deploy fails with a domain or zone error | `radiantx.solutions` isn't in the Cloudflare account you're logged into, or another DNS record already uses `weatherman.apps.radiantx.solutions`. |
+| Requests get `401 Invalid signature` | `SLACK_SIGNING_SECRET` doesn't match the Slack app's signing secret. |
+| Requests get `500 Server misconfigured` | A required secret isn't set. `wrangler tail` shows which one. |
 | `/weather` works but every place returns "Something went wrong" | Google key problem. The admin debug panel will show e.g. `REQUEST_DENIED`. Check the key and that the Geocoding API is enabled. |
 | Nothing works, logs show `Weather API request failed: HTTP 401/403` | `PIRATE_WEATHER_API_KEY` is missing or invalid. |
 
@@ -162,20 +176,25 @@ The server exits at startup with a message naming any required variable that is 
 ## Development
 
 ```sh
-npm run dev        # run from source, restarting on changes (reads .env)
+cp .dev.vars.example .dev.vars   # then fill in the secrets
+npm run dev        # run the Worker locally at http://localhost:8787
 npm test           # run the test suite (Vitest)
 npm run typecheck  # type-check source and tests
-npm run build      # compile to dist/
+npm run types      # regenerate worker-configuration.d.ts after editing wrangler.jsonc
+npm run deploy     # deploy to Cloudflare
 ```
+
+To try the bot from Slack against a local Worker, expose port 8787 with a tunnel (for example `cloudflared tunnel --url http://localhost:8787`) and temporarily point the slash command's Request URL at it.
 
 ### Project layout
 
 ```
 src/
-  index.ts                 entry point: loads config, starts the server
-  app.ts                   Slack app: registers /weather, builds error replies
-  config.ts                reads and validates environment variables
+  worker.ts                Worker entry point: loads config, wires up services
+  config.ts                reads and validates vars and secrets
   slack/
+    handler.ts             HTTP handling: routing, ack, background reply, error replies
+    verify.ts              Slack request signature verification (Web Crypto)
     weatherCommand.ts      parses command text, formats forecast replies
     message.ts             Slack message and attachment builders
   weather/
@@ -183,14 +202,21 @@ src/
     geocoding.ts           Google Geocoding API client
     format.ts              emoji, compass directions, time-zone-aware dates
 test/
+  handler.test.ts
   weather.test.ts
+wrangler.jsonc             Worker name, domain, vars, required secrets
+worker-configuration.d.ts  generated by `npm run types`
 ```
 
-Command parsing and reply formatting (`weatherCommand.ts`) are pure functions that take the weather services as parameters, so they can be tested without network access.
+Command parsing and reply formatting (`weatherCommand.ts`) and request handling (`handler.ts`) take their dependencies as parameters, so they can be tested without network access or the Workers runtime.
 
 ---
 
 ## Version history
+
+**2.1.0** (2026-11-11)
+- Runs on Cloudflare Workers at `weatherman.apps.radiantx.solutions` instead of as a Node.js server.
+- Configuration moved to `wrangler.jsonc` (settings) and Wrangler secrets (keys).
 
 **2.0.0** (2026-11-11)
 - Rewritten in TypeScript on Slack's [Bolt](https://slack.dev/bolt-js) framework.
