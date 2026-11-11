@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 export const APP_VERSION_DATE = '2026-11-11';
 
 export interface Location {
@@ -10,17 +10,28 @@ export interface Location {
 
 export interface Config {
   slackSigningSecret: string;
-  /** Optional: the app only replies via response_url, which needs no token. */
-  slackBotToken?: string;
   pirateWeatherApiKey: string;
   googleGeocodingApiKey: string;
   adminUserIds: string[];
   adminTeamIds: string[];
   defaultLocation: Location;
-  port: number;
 }
 
-function required(env: NodeJS.ProcessEnv, name: string): string {
+/** The settings Weatherman reads: Worker vars and secrets (see wrangler.jsonc). */
+export interface ConfigEnv {
+  SLACK_SIGNING_SECRET?: string;
+  PIRATE_WEATHER_API_KEY?: string;
+  GOOGLE_GEOCODING_API_KEY?: string;
+  ADMIN_USER_IDS?: string;
+  ADMIN_TEAM_IDS?: string;
+  DEFAULT_LATITUDE?: string;
+  DEFAULT_LONGITUDE?: string;
+  DEFAULT_LOCATION_LABEL?: string;
+}
+
+type EnvKey = keyof ConfigEnv;
+
+function required(env: ConfigEnv, name: EnvKey): string {
   const value = env[name]?.trim();
   if (!value) {
     throw new Error(`Missing required environment variable ${name}`);
@@ -35,7 +46,7 @@ function list(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function number(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+function number(env: ConfigEnv, name: EnvKey, fallback: number): number {
   const raw = env[name]?.trim();
   if (!raw) return fallback;
   const parsed = Number(raw);
@@ -45,10 +56,9 @@ function number(env: NodeJS.ProcessEnv, name: string, fallback: number): number 
   return parsed;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+export function loadConfig(env: ConfigEnv): Config {
   return {
     slackSigningSecret: required(env, 'SLACK_SIGNING_SECRET'),
-    ...(env.SLACK_BOT_TOKEN?.trim() && { slackBotToken: env.SLACK_BOT_TOKEN.trim() }),
     pirateWeatherApiKey: required(env, 'PIRATE_WEATHER_API_KEY'),
     googleGeocodingApiKey: required(env, 'GOOGLE_GEOCODING_API_KEY'),
     adminUserIds: list(env.ADMIN_USER_IDS),
@@ -58,6 +68,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       longitude: number(env, 'DEFAULT_LONGITUDE', -81.455),
       label: env.DEFAULT_LOCATION_LABEL?.trim() || 'at Concepta HQ',
     },
-    port: number(env, 'PORT', 3000),
   };
 }

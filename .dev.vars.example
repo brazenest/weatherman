@@ -1,0 +1,5 @@
+# Secrets for local development with `npm run dev` (copy to .dev.vars).
+# In production, set each with `npx wrangler secret put <NAME>`.
+SLACK_SIGNING_SECRET=
+PIRATE_WEATHER_API_KEY=
+GOOGLE_GEOCODING_API_KEY=

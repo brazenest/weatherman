@@ -32,7 +32,8 @@ const round3 = (n: number) => Math.round(n * 1000) / 1000;
 export class GeocodingClient {
   constructor(
     private readonly apiKey: string,
-    private readonly fetchFn: FetchFn = fetch,
+    // Wrapped so `fetch` is never called with this client as `this` (Workers throws "Illegal invocation").
+    private readonly fetchFn: FetchFn = (input, init) => fetch(input, init),
   ) {}
 
   /** Looks up a free-form address or place name. */
