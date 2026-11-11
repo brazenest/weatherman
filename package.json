@@ -7,7 +7,7 @@
   "author": "Alden Gillespy",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.9"
   },
   "main": "dist/index.js",
   "scripts": {
