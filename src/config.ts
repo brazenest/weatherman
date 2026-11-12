@@ -12,6 +12,8 @@ export interface Config {
   slackSigningSecret: string;
   pirateWeatherApiKey: string;
   googleGeocodingApiKey: string;
+  /** Bearer token for the JSON API (/api/forecast). The API is disabled when unset. */
+  agentApiToken?: string;
   adminUserIds: string[];
   adminTeamIds: string[];
   defaultLocation: Location;
@@ -22,6 +24,7 @@ export interface ConfigEnv {
   SLACK_SIGNING_SECRET?: string;
   PIRATE_WEATHER_API_KEY?: string;
   GOOGLE_GEOCODING_API_KEY?: string;
+  AGENT_API_TOKEN?: string;
   ADMIN_USER_IDS?: string;
   ADMIN_TEAM_IDS?: string;
   DEFAULT_LATITUDE?: string;
@@ -61,6 +64,7 @@ export function loadConfig(env: ConfigEnv): Config {
     slackSigningSecret: required(env, 'SLACK_SIGNING_SECRET'),
     pirateWeatherApiKey: required(env, 'PIRATE_WEATHER_API_KEY'),
     googleGeocodingApiKey: required(env, 'GOOGLE_GEOCODING_API_KEY'),
+    ...(env.AGENT_API_TOKEN?.trim() && { agentApiToken: env.AGENT_API_TOKEN.trim() }),
     adminUserIds: list(env.ADMIN_USER_IDS),
     adminTeamIds: list(env.ADMIN_TEAM_IDS),
     defaultLocation: {

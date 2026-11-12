@@ -1,5 +1,6 @@
 /** Cloudflare Worker entry point for Weatherman. */
 
+import { handleApiRequest } from './api/forecast.js';
 import { loadConfig } from './config.js';
 import { handleSlackRequest } from './slack/handler.js';
 import type { WeatherServices } from './slack/weatherCommand.js';
@@ -23,6 +24,9 @@ export default {
       forecast: (lat, lng, type) => forecaster.get(lat, lng, type),
     };
 
+    if (new URL(request.url).pathname.startsWith('/api/')) {
+      return handleApiRequest(request, config, services);
+    }
     return handleSlackRequest(request, config, services, ctx);
   },
 } satisfies ExportedHandler<Env>;
