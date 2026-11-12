@@ -24,5 +24,19 @@
     "required": ["SLACK_SIGNING_SECRET", "PIRATE_WEATHER_API_KEY", "GOOGLE_GEOCODING_API_KEY"]
   },
 
+  // Settings for Preview deployments (`wrangler preview`), which Workers Builds
+  // runs for every non-production branch. Previews don't inherit top-level vars.
+  // Preview secrets are separate: set them with `npx wrangler preview secret put <NAME>`
+  // if a Preview needs to serve real requests.
+  "previews": {
+    "vars": {
+      "ADMIN_USER_IDS": "U0VTT5EHL",
+      "ADMIN_TEAM_IDS": "T02996B3M",
+      "DEFAULT_LATITUDE": "28.480",
+      "DEFAULT_LONGITUDE": "-81.455",
+      "DEFAULT_LOCATION_LABEL": "at Concepta HQ"
+    }
+  },
+
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }

@@ -3,3 +3,5 @@
 SLACK_SIGNING_SECRET=
 PIRATE_WEATHER_API_KEY=
 GOOGLE_GEOCODING_API_KEY=
+# Optional: bearer token for the JSON API used by the Slack agent (/api/forecast).
+AGENT_API_TOKEN=
