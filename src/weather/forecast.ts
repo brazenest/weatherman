@@ -48,7 +48,8 @@ export type FetchFn = typeof fetch;
 export class ForecastClient {
   constructor(
     private readonly apiKey: string,
-    private readonly fetchFn: FetchFn = fetch,
+    // Wrapped so `fetch` is never called with this client as `this` (Workers throws "Illegal invocation").
+    private readonly fetchFn: FetchFn = (input, init) => fetch(input, init),
   ) {}
 
   /** Builds the request URL, excluding every data block except the requested one and alerts. */
