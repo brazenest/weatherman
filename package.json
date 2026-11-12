@@ -1,6 +1,6 @@
 {
   "name": "weatherman",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Weatherman: a weather app for Slack",
   "private": true,
   "license": "UNLICENSED",

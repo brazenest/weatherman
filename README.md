@@ -2,7 +2,7 @@
 
 **A weather app for Slack.** Type `/weather` in any channel or DM to get current conditions, an hourly outlook, or a seven-day forecast for anywhere in the world.
 
-v2.1.0 · November 11, 2026
+v2.2.0 · November 12, 2026
 
 ---
 
@@ -137,6 +137,7 @@ To ship a change later, run `npm run deploy` again. Secrets persist between depl
 | `SLACK_SIGNING_SECRET` | Verifies that requests really come from Slack. Found under *Basic Information* in your Slack app. |
 | `PIRATE_WEATHER_API_KEY` | Pirate Weather API key. |
 | `GOOGLE_GEOCODING_API_KEY` | Google Maps Platform key with the Geocoding API enabled. |
+| `AGENT_API_TOKEN` | *Optional.* Bearer token for the JSON forecast API (below). The API is off when this isn't set. Generate one with `openssl rand -hex 32`. |
 
 **Settings** (in the `vars` section of `wrangler.jsonc`; redeploy after changing):
 
@@ -151,6 +152,25 @@ To ship a change later, run `npm run deploy` again. Secrets persist between depl
 To find a Slack user ID, open the person's profile → **⋮** → **Copy member ID**. The workspace ID is the `T…` value in your workspace's URL at `app.slack.com/client/T…/`.
 
 The domain is set by `routes` in `wrangler.jsonc`.
+
+### JSON forecast API
+
+For programmatic clients, such as a Slack agent that answers weather questions, the Worker also serves:
+
+```
+GET /api/forecast?place=<place>&type=currently|hourly|daily
+Authorization: Bearer <AGENT_API_TOKEN>
+```
+
+`place` is optional and defaults to the configured default location; `type` defaults to `currently`. The response is JSON with the resolved `location`, the location's `timezone`, any active `alerts`, and either `currently`, `hourly` (next 12 hours) or `daily` (next 7 days). Temperatures are °F, wind speeds mph, and times Unix seconds.
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Forecast returned. |
+| `400` | Unknown `type`, or `place` longer than 200 characters. |
+| `401` | Missing or wrong bearer token. |
+| `404` | `location_not_found`, or the API is disabled because `AGENT_API_TOKEN` isn't set. |
+| `502` | `upstream_error`: the geocoding or forecast service failed. `wrangler tail` shows the cause. |
 
 ### Logs
 
@@ -192,6 +212,8 @@ To try the bot from Slack against a local Worker, expose port 8787 with a tunnel
 src/
   worker.ts                Worker entry point: loads config, wires up services
   config.ts                reads and validates vars and secrets
+  api/
+    forecast.ts            JSON forecast API (GET /api/forecast) with bearer-token auth
   slack/
     handler.ts             HTTP handling: routing, ack, background reply, error replies
     verify.ts              Slack request signature verification (Web Crypto)
@@ -202,6 +224,7 @@ src/
     geocoding.ts           Google Geocoding API client
     format.ts              emoji, compass directions, time-zone-aware dates
 test/
+  api.test.ts
   handler.test.ts
   weather.test.ts
 wrangler.jsonc             Worker name, domain, vars, required secrets
@@ -213,6 +236,10 @@ Command parsing and reply formatting (`weatherCommand.ts`) and request handling 
 ---
 
 ## Version history
+
+**2.2.0** (2026-11-12)
+- New JSON forecast API (`GET /api/forecast`) for programmatic clients such as the Weatherman Slack agent, protected by the optional `AGENT_API_TOKEN` secret.
+- Branch builds now create Workers Previews (`previews` block in `wrangler.jsonc`).
 
 **2.1.0** (2026-11-11)
 - Runs on Cloudflare Workers at `weatherman.apps.radiantx.solutions` instead of as a Node.js server.
