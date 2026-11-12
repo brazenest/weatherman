@@ -1,5 +1,5 @@
-export const APP_VERSION = '2.1.0';
-export const APP_VERSION_DATE = '2026-11-11';
+export const APP_VERSION = '2.2.0';
+export const APP_VERSION_DATE = '2026-11-12';
 
 export interface Location {
   latitude: number;

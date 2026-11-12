@@ -2,7 +2,7 @@
 
 **A weather app for Slack.** Type `/weather` in any channel or DM to get current conditions, an hourly outlook, or a seven-day forecast for anywhere in the world.
 
-v2.1.0 · November 11, 2026
+v2.2.0 · November 12, 2026
 
 ---
 
@@ -236,6 +236,10 @@ Command parsing and reply formatting (`weatherCommand.ts`) and request handling 
 ---
 
 ## Version history
+
+**2.2.0** (2026-11-12)
+- New JSON forecast API (`GET /api/forecast`) for programmatic clients such as the Weatherman Slack agent, protected by the optional `AGENT_API_TOKEN` secret.
+- Branch builds now create Workers Previews (`previews` block in `wrangler.jsonc`).
 
 **2.1.0** (2026-11-11)
 - Runs on Cloudflare Workers at `weatherman.apps.radiantx.solutions` instead of as a Node.js server.
